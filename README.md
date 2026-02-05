@@ -15,6 +15,16 @@ The project aims to provide LLMs with a persistent, stateful Lisp environment wh
 
 - [SBCL](http://www.sbcl.org/) (Steel Bank Common Lisp)
 - [Quicklisp](https://www.quicklisp.org/beta/) (for managing dependencies)
+- [llama.cpp](https://github.com/ggerganov/llama.cpp)
+
+### Setting up llama.cpp
+
+1. Download and build `llama.cpp` according to its documentation.
+2. Start the server with a compatible model (e.g., GLM-4):
+   ```bash
+   ./llama-server -hf unsloth/GLM-4-9B-0414-GGUF:Q4_K_M
+   ```
+   *Note: Ensure the server is running on `http://localhost:8080` (default).*
 
 ## Installation
 
@@ -32,10 +42,26 @@ The project aims to provide LLMs with a persistent, stateful Lisp environment wh
 
 ## Usage
 
+### LLM Loop
+
+The core feature is the `run-loop`, which starts an interactive session with a `llama.cpp` server:
+
+```lisp
+(cambeno:run-loop "Compute the first 10 prime numbers using Lisp.")
+```
+
+This will:
+1. Send the prompt to the LLM.
+2. If the LLM generates `<lisp>...</lisp>` blocks, they are evaluated.
+3. The results are injected back into the context.
+4. The process repeats until no more Lisp blocks are found or `max-iterations` is reached.
+
+### Manual Processing
+
 You can process text containing Lisp blocks using the `cambeno:main` function:
 
 ```lisp
-(cambeno:main "<lisp>(defun hello (name) (format nil "Hello, ~A!" name))</lisp> Result: <lisp>(hello "World")</lisp>")
+(cambeno:main "<lisp>(defun hello (name) (format nil \"Hello, ~A!\" name))</lisp> Result: <lisp>(hello \"World\")</lisp>")
 ```
 
 ### Self-Inspection
