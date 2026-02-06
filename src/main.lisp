@@ -5,6 +5,7 @@
 All your code will be executed in the namespace (package) #:CAMBENO.SCRATCH.
 To solve tasks, you should write code in markdown blocks (```lisp ... ```) and evaluate it to verify your results.
 When you evaluate code, the result will be provided to you.
+If you receive an error message, analyze it and fix your code in the next turn.
 Use this environment to build complex functions turn-by-turn.
 Once you have the final confirmed answer, provide it and then type 'STOP'.")
 
@@ -48,11 +49,12 @@ Once you have the final confirmed answer, provide it and then type 'STOP'.")
                               (values (cdr (assoc :results result-data)))
                               (stdout (cdr (assoc :stdout result-data)))
                               (stderr (cdr (assoc :stderr result-data)))
-                              (formatted-result (format nil "Code: ~A~%Stdout: ~A~%Stderr: ~A~%Values: ~S~%" 
-                                                       code (or stdout "") (or stderr "") values)))
-                         (push (format nil "Result: Stdout: ~A, Values: ~S" (or stdout "") values) turn-results)
+                              (formatted-output (if (and stderr (not (string= stderr "")))
+                                                    (format nil "ERROR: ~A" stderr)
+                                                    (format nil "Stdout: ~A~%Values: ~S" (or stdout "") values))))
+                         (push (format nil "Result of [~A]:~%~A" code formatted-output) turn-results)
                          (format t "Executed Code Block:~%~A~%" code)
-                         (format t "Output/Result:~%~A~%" formatted-result)))
+                         (format t "Output/Result:~%~A~%~%" formatted-output)))
                      (log-timestamp (format nil "--- [Iteration ~A] Updating context ---" i))
                      (let ((results-string (format nil "~%Results from Lisp execution:~%~{~A~^~%~}~%Assistant: " (nreverse turn-results))))
                        (setf current-prompt (concatenate 'string 
