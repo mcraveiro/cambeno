@@ -13,22 +13,30 @@
 You can execute Lisp code by wrapping it in <lisp>...</lisp> tags.
 When you do this, the result of the evaluation will be injected into your context.
 Use this to verify your logic, perform complex calculations, or maintain state.
-Always aim to provide working Common Lisp code.")
+Always provide working Common Lisp code.
+Once you have the final answer, provide it and then type 'STOP' to end the loop.")
 
 (defun run-loop (initial-prompt &key (max-iterations 5))
   "Runs a persistent loop: LLM -> Middleware -> REPL -> LLM."
-  (let ((current-prompt (format nil "~A~%~%User: ~A" *system-instruction* initial-prompt)))
-    (format t "Starting loop...~%")
+  (let ((current-prompt (format nil "~A~%~%User: ~A~%Assistant: " *system-instruction* initial-prompt)))
+    (format t "--- Starting loop ---~%")
     (loop for i from 1 to max-iterations
-          do (format t "--- Iteration ~A ---~%" i)
-             (let* ((llm-response (query-llama current-prompt))
-                    (processed-response (process-llm-output llm-response)))
+          do (let* ((llm-response (query-llama current-prompt))
+                    (lisp-results (eval-all-blocks llm-response)))
+               (format t "~%--- Iteration ~A ---~%" i)
                (format t "LLM Response:~%~A~%~%" llm-response)
-               (if (string= llm-response processed-response)
+               
+               (if (string= lisp-results "")
                    (progn
-                     (format t "No more Lisp blocks to process. Ending loop.~%")
-                     (return processed-response))
+                     (format t "No Lisp blocks found. Loop complete.~%")
+                     (return llm-response))
                    (progn
-                     (format t "Processed Response (with results):~%~A~%~%" processed-response)
-                     ;; Update prompt for the next turn, including previous state
-                     (setf current-prompt (concatenate 'string current-prompt llm-response processed-response))))))))
+                     (format t "Lisp Results:~%~A~%~%" lisp-results)
+                     ;; Update prompt: Append LLM response + result for the next iteration
+                     (setf current-prompt (concatenate 'string 
+                                                       current-prompt 
+                                                       llm-response 
+                                                       (format nil "~%Results:~%~A~%Assistant: " lisp-results)))
+                     (when (search "STOP" llm-response)
+                       (format t "STOP signal received. Loop complete.~%")
+                       (return llm-response))))))))

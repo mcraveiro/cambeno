@@ -8,10 +8,16 @@
   (:export #:list-functions
            #:inspect-symbol))
 
+(defpackage #:cambeno.llama
+  (:use #:cl)
+  (:export #:query-llama
+           #:*llama-server-url*))
+
 (defpackage #:cambeno.middleware
-  (:use #:cl #:cambeno.repl)
-  (:export #:process-llm-output))
+  (:use #:cl #:cambeno.repl #:cambeno.llama)
+  (:export #:process-llm-output
+           #:eval-all-blocks))
 
 (defpackage #:cambeno
-  (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils)
-  (:export #:main))
+  (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
+  (:export #:main #:run-loop))

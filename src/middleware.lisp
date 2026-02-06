@@ -14,18 +14,25 @@
           (push (subseq text (+ start (length start-tag)) end) blocks)
           (setf current-pos (+ end (length end-tag))))))))
 
-(defun process-llm-output (text)
-  "Processes the LLM output, evaluating any <lisp> blocks and appending results."
+(defun eval-all-blocks (text)
+  "Evaluates all Lisp blocks in text and returns a single string containing all results."
   (let ((blocks (extract-lisp-blocks text))
-        (processed-text text))
+        (results-list '()))
     (dolist (block blocks)
       (let* ((eval-result (cambeno.repl:eval-lisp-string block))
              (values (first eval-result))
              (stdout (second eval-result))
              (stderr (third eval-result))
-             (result-string (format nil "~%<lisp-result>~%~@[STDOUT:~%~A~]~%~@[STDERR:~%~A~]~%VALUES: ~S~%</lisp-result>"
+             (result-string (format nil "<lisp-result>~%~@[STDOUT:~%~A~]~%~@[STDERR:~%~A~]~%VALUES: ~S~%</lisp-result>~%"
                                    (unless (string= stdout "") stdout)
                                    (unless (string= stderr "") stderr)
                                    values)))
-        (setf processed-text (concatenate 'string processed-text result-string))))
-    processed-text))
+        (push result-string results-list)))
+    (format nil "~{~A~^~%~}" (nreverse results-list))))
+
+(defun process-llm-output (text)
+  "Processes the LLM output, evaluating any <lisp> blocks and appending results."
+  (let ((results (eval-all-blocks text)))
+    (if (string= results "")
+        text
+        (concatenate 'string text (format nil "~%~A" results)))))
