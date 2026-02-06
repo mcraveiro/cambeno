@@ -2,7 +2,7 @@
   (:use #:cl))
 
 (defpackage #:cambeno.repl
-  (:use #:cl #:cl-json)
+  (:use #:cl)
   (:export #:eval-lisp-string
            #:init-repl))
 
@@ -18,7 +18,9 @@
            #:*llama-server-url*))
 
 (defpackage #:cambeno.middleware
-  (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre #:3bmd-grammar)
+  (:use #:cl #:cambeno.repl #:cambeno.llama)
+  (:import-from #:cl-ppcre #:scan #:regex-replace-all)
+  (:import-from #:3bmd-grammar #:parse-doc)
   (:export #:markdown-to-sexp
            #:clean-llm-text
            #:log-timestamp
@@ -26,4 +28,5 @@
 
 (defpackage #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
+  (:import-from #:cl-ppcre #:scan)
   (:export #:main #:run-loop))
