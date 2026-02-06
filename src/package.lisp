@@ -1,3 +1,6 @@
+(defpackage #:cambeno.scratch
+  (:use #:cl))
+
 (defpackage #:cambeno.repl
   (:use #:cl #:cl-json)
   (:export #:eval-lisp-string
@@ -17,7 +20,9 @@
 (defpackage #:cambeno.middleware
   (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre #:3bmd-grammar)
   (:export #:markdown-to-sexp
-           #:clean-llm-text))
+           #:clean-llm-text
+           #:log-timestamp
+           #:extract-code-from-ast))
 
 (defpackage #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
