@@ -1,6 +1,7 @@
 root    ::= list
 list    ::= "(" (item (ws item)*)? ")"
-item    ::= symbol | string | number | list | keyword
+item    ::= quote? (symbol | string | number | list | keyword)
+quote   ::= "'" | "`" | "," | ",@"
 symbol  ::= [a-zA-Z+*/=<>!?-][a-zA-Z0-9+*/=<>!?-]*
 keyword ::= ":" [a-zA-Z0-9+*/=<>!?-]+
 string  ::= "\"" ([^"\\\n] | "\\" .)* "\""

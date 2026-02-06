@@ -26,7 +26,8 @@
            #:clean-llm-text
            #:log-timestamp
            #:extract-code-from-ast
-           #:find-first-sexp))
+           #:find-first-sexp
+           #:extract-all-sexps))
 
 (uiop:define-package #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
