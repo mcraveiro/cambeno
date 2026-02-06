@@ -1,0 +1,10 @@
+root    ::= list
+list    ::= "(" (item (whitespace item)*)? ")"
+item    ::= symbol | string | number | list | keyword
+symbol  ::= [a-zA-Z+\-*/=<>!][a-zA-Z0-9+\-*/=<>!]*
+keyword ::= ":" [a-zA-Z0-9+\-*/=<>!]+
+string  ::= """ ([^"
+] | "" .)* """
+number  ::= "-"? [0-9]+ ("." [0-9]+)?
+whitespace ::= [ 	
+]+

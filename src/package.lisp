@@ -29,4 +29,4 @@
 (uiop:define-package #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
   (:import-from #:cl-ppcre #:scan)
-  (:export #:main #:run-loop))
+  (:export #:main #:run-loop #:symbolic-run-loop))

@@ -1,78 +1,62 @@
 (in-package #:cambeno)
 
-(defvar *system-instruction* 
-  "ROLE: You are a Symbolic Reasoning Engine. You solve tasks by writing and verifying Common Lisp code.
-ENVIRONMENT: You are currently inside the #:CAMBENO.SCRATCH package.
-RULES:
-1. ONLY output Markdown.
-2. For code verification, use markdown blocks: ```lisp ... ```.
-3. DO NOT simulate turn-taking. NEVER write 'User:', 'Assistant:', or 'CL-USER>'.
-4. DO NOT make up results. Execution results will be provided to you by the system in the next turn.
-5. If an error is reported, fix the code logic.
-6. Once the task is fully verified and complete, provide the final answer and end with the word 'STOP'.")
+(defvar *symbolic-instruction*
+  "ROLE: You are a Symbolic Reasoning Engine.
+ENVIRONMENT: #:CAMBENO.SCRATCH package.
+COMMUNICATION: You ONLY communicate using Lisp Property Lists.
+FORMAT: (:reasoning \"thought process\" :code (lisp code to execute) :stop boolean)
+EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
 
-(defun main (prompt)
-  "Simple demo: Query LLM and print S-exp AST."
-  (log-timestamp "--- [START] Manual Query ---")
-  (format t "Prompt: ~A~%" prompt)
-  (let* ((raw-response (query-llama (format nil "~A~%~%Task: ~A" *system-instruction* prompt) :n-predict 512))
-         (sexp (markdown-to-sexp raw-response)))
-    (log-timestamp "--- [LLM RESPONSE] ---")
-    (format t "~A~%" raw-response)
-    (log-timestamp "--- [S-EXP AST] ---")
-    (format t "~S~%" sexp)
-    (log-timestamp "--- [END] Manual Query ---")))
+(defun read-file-as-string (path)
+  (with-open-file (stream path)
+    (let ((data (make-string (file-length stream))))
+      (read-sequence data stream)
+      data)))
 
-(defun run-loop (initial-prompt &key (max-iterations 10) (n-predict 1024))
-  "Runs a persistent loop with complete trace and timestamped logging."
-  (let ((current-prompt (format nil "~A~%~%TASK: ~A~%REASONING: " *system-instruction* initial-prompt)))
-    (log-timestamp "LOG START")
-    (log-timestamp "--- [START] Autonomous Reasoning Loop ---")
-    (format t "Task: ~A~%~%" initial-prompt)
+(defun symbolic-run-loop (initial-task &key (max-iterations 10))
+  "Runs a pure symbolic loop using GBNF grammar to enforce S-exp responses."
+  (let ((current-prompt (format nil "~A~%~%TASK: ~A~%NEXT STEP: " *symbolic-instruction* initial-task))
+        (grammar (read-file-as-string "lisp.gbnf")))
+    
+    (log-timestamp "--- [START] Pure Symbolic Loop ---")
+    (format t "Task: ~A~%~%" initial-task)
+    
     (loop for i from 1 to max-iterations
-          do (log-timestamp (format nil ">>> [Iteration ~A] Requesting LLM Response..." i))
-             (force-output)
-             (let* ((llm-response (query-llama current-prompt :n-predict n-predict))
-                    (ast (markdown-to-sexp llm-response))
-                    (code-blocks (extract-code-from-ast ast))
-                    (turn-results '()))
-               (log-timestamp (format nil "--- [Iteration ~A] Raw LLM Markdown ---" i))
-               (format t "~A~%~%" llm-response)
-               (if code-blocks
-                   (progn
-                     (log-timestamp (format nil "--- [Iteration ~A] Action: Executing Lisp ---" i))
-                     (dolist (code code-blocks)
-                       (let* ((clean-code (cl-ppcre:regex-replace-all "(?m)^CL-USER>\\s*" code ""))
-                              (wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" clean-code))
+          do (log-timestamp (format nil ">>> [Iteration ~A] Requesting S-Exp from LLM..." i))
+             (let* ((llm-response (query-llama current-prompt :grammar grammar))
+                    (data (handler-case (read-from-string llm-response) (error (e) (list :error e)))))
+               
+               (log-timestamp (format nil "--- [Iteration ~A] LLM S-Expression ---" i))
+               (format t "~S~%~%" data)
+               
+               (let ((reasoning (getf data :reasoning))
+                     (code (getf data :code))
+                     (stop (getf data :stop)))
+                 
+                 (when reasoning (format t "Reasoning: ~A~%" reasoning))
+                 
+                 (if code
+                     (progn
+                       (log-timestamp (format nil "--- [Iteration ~A] Action: Executing Code ---" i))
+                       (let* ((wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" code))
                               (result-json (cambeno.repl:eval-lisp-string wrapped-code))
                               (result-data (cl-json:decode-json-from-string result-json))
                               (values (cdr (assoc :results result-data)))
-                              (stdout (cdr (assoc :stdout result-data)))
                               (stderr (cdr (assoc :stderr result-data)))
-                              (formatted-output (if (and stderr (not (string= stderr "")))
-                                                    (format nil "ERROR: ~A" stderr)
-                                                    (format nil "Stdout: ~A~%Values: ~S" (or stdout "") values))))
-                         (push (format nil "Output of [~A]:~%~A" clean-code formatted-output) turn-results)
-                         (format t "Code:~%~A~%" clean-code)
-                         (format t "Result:~%~A~%~%" formatted-output)))
-                     (log-timestamp (format nil "--- [Iteration ~A] Updating context ---" i))
-                     (let ((results-string (format nil "~%SYSTEM FEEDBACK:~%~{~A~^~%~}~%REASONING: " (nreverse turn-results))))
-                       (setf current-prompt (concatenate 'string 
-                                                         current-prompt 
-                                                         llm-response 
-                                                         results-string))))
-                   (progn
-                     (log-timestamp (format nil "--- [Iteration ~A] No code blocks ---" i))
+                              (feedback (if (and stderr (not (string= stderr "")))
+                                            (format nil "(:error ~S)" stderr)
+                                            (format nil "(:values ~S)" values))))
+                         (format t "Result: ~A~%~%" feedback)
+                         (setf current-prompt (concatenate 'string 
+                                                           current-prompt 
+                                                           llm-response 
+                                                           (format nil "~%SYSTEM FEEDBACK: ~A~%NEXT STEP: " feedback)))))
                      (setf current-prompt (concatenate 'string 
                                                        current-prompt 
                                                        llm-response 
-                                                       (format nil "~%REASONING: ")))))
-               (cond 
-                 ((cl-ppcre:scan "(?i)STOP" llm-response)
-                  (log-timestamp (format nil "--- [STOP] iteration ~A ---" i))
-                  (return llm-response))
-                 ((and (null code-blocks) (> i 1))
-                  (log-timestamp (format nil "--- [FINISH] iteration ~A ---" i))
-                  (return llm-response)))))
-    (log-timestamp "--- [END] Autonomous Reasoning Loop ---")
-    (log-timestamp "LOG END")))
+                                                       (format nil "~%NEXT STEP: "))))
+
+                 (when (or stop (getf data :error))
+                   (log-timestamp (format nil "--- [FINISH] Loop complete at iteration ~A ---" i))
+                   (return data))))))
+    (log-timestamp "--- [END] Pure Symbolic Loop ---")))
