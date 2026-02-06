@@ -104,6 +104,20 @@ Tests are implemented using [FiveAM](https://github.com/sionescu/fiveam). Run th
 (asdf:test-system :cambeno)
 ```
 
+## Code Quality & Linting
+
+We use **SBLINT** to ensure code quality and catch potential issues early.
+
+To lint the project from the command line:
+```bash
+sbcl --non-interactive \
+     --eval "(push \"$(pwd)/\" asdf:*central-registry*)" \
+     --eval "(ql:quickload :sblint)" \
+     --eval "(sblint:run-lint-system :cambeno)"
+```
+
+In Emacs, the SBCL compiler provides real-time feedback (warnings/notes) as you compile functions (`C-c C-c`) or buffers (`C-c C-k`).
+
 ## License
 
 MIT
