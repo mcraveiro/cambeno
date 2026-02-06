@@ -4,8 +4,11 @@
   "ROLE: You are a Symbolic Reasoning Engine.
 ENVIRONMENT: #:CAMBENO.SCRATCH package.
 COMMUNICATION: You ONLY communicate using Lisp Property Lists.
-FORMAT: (:reasoning \"thought process\" :code (lisp code to execute) :stop boolean)
-You may provide multiple plists in one turn if multiple steps are needed.")
+INPUT_FORMATS:
+- Initial Task: (:task \"description\")
+- System Feedback: (:feedback \"results or error\" :status :success|:error|:parse-error)
+OUTPUT_FORMAT:
+- Your response must be one or more plists: (:reasoning \"thought\" :code (lisp) :stop boolean)")
 
 (defun read-file-as-string (path)
   (with-open-file (stream path)
@@ -14,56 +17,77 @@ You may provide multiple plists in one turn if multiple steps are needed.")
       data)))
 
 (defun symbolic-run-loop (initial-task &key (max-iterations 10) (n-predict 1024))
-  "Runs a persistent loop that extracts and processes all S-expressions in LLM response."
-  (let ((current-prompt (format nil "~A~%~%TASK: ~A~%NEXT STEPS: " *symbolic-instruction* initial-task))
+  "Runs a persistent loop using pure S-Expression communication."
+  (let ((current-prompt (format nil "~A~%~%(:task ~S)~%REASONING: " *symbolic-instruction* initial-task))
         (grammar (read-file-as-string "lisp.gbnf")))
     
-    (log-timestamp "--- [START] Multi-Step Symbolic Loop ---")
+    (log-timestamp "================================================================================")
+    (log-timestamp "--- [START] Pure Symbolic reasoning ---")
     (format t "System Instruction:~%~A~%~%" *symbolic-instruction*)
     (format t "Initial Task: ~A~%~%" initial-task)
     
     (loop for i from 1 to max-iterations
-          do (log-timestamp (format nil ">>> [Iteration ~A] Requesting LLM Response..." i))
+          do (log-timestamp (format nil ">>> [Step ~A] Requesting S-Exp from LLM..." i))
+             (force-output)
+             
              (let* ((llm-response (query-llama current-prompt :grammar grammar :n-predict n-predict))
                     (sexp-strings (extract-all-sexps llm-response))
                     (turn-feedback '())
-                    (stop-requested nil))
+                    (stop-requested nil)
+                    (parse-error nil))
                
-               (log-timestamp (format nil "--- [Iteration ~A] LLM Raw Response ---" i))
+               (log-timestamp (format nil "--- [Step ~A] LLM Raw Response ---" i))
                (format t "~A~%~%" llm-response)
 
-               (unless sexp-strings
-                 (log-timestamp "ERROR: No S-Expressions found. Ending.")
-                 (return (list :error "No S-Expressions")))
+               (if (null sexp-strings)
+                   (progn
+                     (log-timestamp (format nil "--- [Step ~A] Error: No valid S-Expressions found ---" i))
+                     (setf parse-error "No balanced S-Expressions found in your response. Please ensure you output valid Lisp plists.")
+                     (setf current-prompt (concatenate 'string 
+                                                       current-prompt 
+                                                       llm-response 
+                                                       (format nil "~%(:feedback ~S :status :parse-error)~%REASONING: " parse-error))))
+                   
+                   (progn
+                     (dolist (str sexp-strings)
+                       (multiple-value-bind (data err)
+                           (handler-case (values (read-from-string str) nil)
+                             (error (e) (values nil e)))
+                         (if err
+                             (progn
+                               (log-timestamp (format nil "--- [Step ~A] Parse Error in Sexp ---" i))
+                               (push (format nil "Parse error in ~S: ~A" str err) turn-feedback))
+                             (let ((reasoning (getf data :reasoning))
+                                   (code (getf data :code))
+                                   (stop (getf data :stop)))
+                               (when reasoning (format t "Reasoning: ~A~%" reasoning))
+                               (when stop (setf stop-requested t))
+                               (if code
+                                   (let* ((wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" code))
+                                          (result-json (cambeno.repl:eval-lisp-string wrapped-code))
+                                          (result-data (cl-json:decode-json-from-string result-json))
+                                          (values (cdr (assoc :results result-data)))
+                                          (stderr (cdr (assoc :stderr result-data)))
+                                          (feedback-val (if (and stderr (not (string= stderr "")))
+                                                            (format nil "ERROR: ~A" stderr)
+                                                            (format nil "VALUES: ~S" values))))
+                                     (format t "Executed: ~A~%Result: ~A~%~%" code feedback-val)
+                                     (push (format nil "Result of ~S: ~A" code feedback-val) turn-feedback)))))))
 
-               (dolist (str sexp-strings)
-                 (let ((data (handler-case (read-from-string str) (error (e) (list :error e)))))
-                   (if (not (listp data))
-                       (push (format nil "Error: ~S is not a valid list." data) turn-feedback)
-                       (let ((reasoning (getf data :reasoning))
-                             (code (getf data :code))
-                             (stop (getf data :stop)))
-                         (when reasoning (format t "Reasoning: ~A~%" reasoning))
-                         (when stop (setf stop-requested t))
-                         (if code
-                             (let* ((wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" code))
-                                    (result-json (cambeno.repl:eval-lisp-string wrapped-code))
-                                    (result-data (cl-json:decode-json-from-string result-json))
-                                    (values (cdr (assoc :results result-data)))
-                                    (stderr (cdr (assoc :stderr result-data)))
-                                    (feedback (if (and stderr (not (string= stderr "")))
-                                                  (format nil "(:error ~S)" stderr)
-                                                  (format nil "(:values ~S)" values))))
-                               (format t "Executed: ~A~%Result: ~A~%~%" code feedback)
-                               (push (format nil "Result of [~A]: ~A" code feedback) turn-feedback)))))))
+                     (let* ((status (if (search "ERROR:" (format nil "~{~A~}" turn-feedback)) :error :success))
+                            (feedback-str (format nil "~%(:feedback ~S :status ~S)~%REASONING: " 
+                                                  (format nil "~{~A~^~%~}" (nreverse turn-feedback))
+                                                  status)))
+                       (setf current-prompt (concatenate 'string current-prompt llm-response feedback-str)))))
 
-               (let ((feedback-str (format nil "~%SYSTEM FEEDBACK:~%~{~A~^~%~}~%NEXT STEPS: " (nreverse turn-feedback))))
-                 (setf current-prompt (concatenate 'string current-prompt llm-response feedback-str)))
-
-               (when stop-requested
-                 (log-timestamp (format nil "--- [STOP] iteration ~A ---" i))
-                 (return :complete))))))
-
-(defun run-loop (initial-task &rest args)
-  "Alias for symbolic-run-loop."
-  (apply #'symbolic-run-loop initial-task args))
+               (cond 
+                 (stop-requested
+                  (log-timestamp (format nil "--- [STOP] Completion signal received at step ~A ---" i))
+                  (return :complete))
+                 
+                 ((and (null sexp-strings) (> i 3))
+                  (log-timestamp (format nil "--- [ABORT] Repeated parse failures at step ~A ---" i))
+                  (return :failed))))))
+    
+    (log-timestamp "--- [END] Pure Symbolic reasoning ---")
+    (log-timestamp "================================================================================")))
