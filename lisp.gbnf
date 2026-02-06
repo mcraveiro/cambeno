@@ -1,8 +1,8 @@
-root    ::= ws list ws
+root    ::= list
 list    ::= "(" (item (ws item)*)? ")"
 item    ::= symbol | string | number | list | keyword
-symbol  ::= [a-zA-Z+\-*/=<>!][a-zA-Z0-9+\-*/=<>!]*
-keyword ::= ":" [a-zA-Z0-9+\-*/=<>!]+
+symbol  ::= [a-zA-Z+*/=<>!?-][a-zA-Z0-9+*/=<>!?-]*
+keyword ::= ":" [a-zA-Z0-9+*/=<>!?-]+
 string  ::= "\"" ([^"\\\n] | "\\" .)* "\""
 number  ::= "-"? [0-9]+ ("." [0-9]+)?
-ws      ::= [ \t\n\r]*
+ws      ::= [ \t\n\r]+

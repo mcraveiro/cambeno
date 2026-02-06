@@ -22,6 +22,23 @@
       (traverse ast)
       (nreverse code-blocks))))
 
+(defun find-first-sexp (text)
+  "Finds the first balanced (...) list in the text."
+  (let ((start (search "(" text))
+        (count 0)
+        (pos 0))
+    (when start
+      (setf pos start)
+      (loop
+        (when (>= pos (length text)) (return nil))
+        (let ((char (char text pos)))
+          (cond
+            ((char= char #\() (incf count))
+            ((char= char #\)) (decf count)))
+          (when (= count 0)
+            (return (subseq text start (1+ pos))))
+          (incf pos))))))
+
 (defun markdown-to-sexp (text)
   "Converts markdown text to a Common Lisp S-expression AST using 3bmd."
   (let ((3bmd-code-blocks:*code-blocks* t))

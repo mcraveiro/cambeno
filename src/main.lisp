@@ -24,10 +24,13 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
     (loop for i from 1 to max-iterations
           do (log-timestamp (format nil ">>> [Iteration ~A] Requesting S-Exp from LLM..." i))
              (let* ((llm-response (query-llama current-prompt :grammar grammar :n-predict n-predict))
-                    (data (handler-case 
-                              (read-from-string llm-response) 
-                            (error (e) 
-                              (list :error (format nil "Parse error: ~A" e))))))
+                    (sexp-str (find-first-sexp llm-response))
+                    (data (if sexp-str
+                              (handler-case 
+                                  (read-from-string sexp-str) 
+                                (error (e) 
+                                  (list :error (format nil "Parse error: ~A" e))))
+                              (list :error "No S-Expression found in response"))))
                
                (log-timestamp (format nil "--- [Iteration ~A] LLM S-Expression ---" i))
                (format t "~S~%~%" data)
