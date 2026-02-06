@@ -11,14 +11,13 @@
 (defpackage #:cambeno.llama
   (:use #:cl)
   (:export #:query-llama
+           #:test-performance
            #:*llama-server-url*))
 
 (defpackage #:cambeno.middleware
-  (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre)
-  (:export #:process-llm-output
-           #:eval-all-blocks
-           #:clean-llm-text
-           #:md-to-lisp-tags))
+  (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre #:3bmd-grammar)
+  (:export #:markdown-to-sexp
+           #:clean-llm-text))
 
 (defpackage #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)

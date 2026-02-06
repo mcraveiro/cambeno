@@ -2,7 +2,7 @@
   :version "0.1.0"
   :author "Marco"
   :license "MIT"
-  :depends-on ("uiop" "cl-json" "drakma" "flexi-streams" "str" "cl-ppcre")
+  :depends-on ("uiop" "cl-json" "drakma" "flexi-streams" "str" "cl-ppcre" "3bmd" "3bmd-ext-code-blocks")
   :components ((:module "src"
                 :components
                 ((:file "package")
