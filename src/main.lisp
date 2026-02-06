@@ -26,28 +26,22 @@ RULES:
 (defun run-loop (initial-prompt &key (max-iterations 10) (n-predict 1024))
   "Runs a persistent loop with complete trace and timestamped logging."
   (let ((current-prompt (format nil "~A~%~%TASK: ~A~%REASONING: " *system-instruction* initial-prompt)))
-    
-    (log-timestamp "================================================================================")
+    (log-timestamp "LOG START")
     (log-timestamp "--- [START] Autonomous Reasoning Loop ---")
     (format t "Task: ~A~%~%" initial-prompt)
-    
     (loop for i from 1 to max-iterations
           do (log-timestamp (format nil ">>> [Iteration ~A] Requesting LLM Response..." i))
              (force-output)
-             
              (let* ((llm-response (query-llama current-prompt :n-predict n-predict))
                     (ast (markdown-to-sexp llm-response))
                     (code-blocks (extract-code-from-ast ast))
                     (turn-results '()))
-               
                (log-timestamp (format nil "--- [Iteration ~A] Raw LLM Markdown ---" i))
                (format t "~A~%~%" llm-response)
-               
                (if code-blocks
                    (progn
                      (log-timestamp (format nil "--- [Iteration ~A] Action: Executing Lisp ---" i))
                      (dolist (code code-blocks)
-                       ;; Filter out common hallucinated REPL prefixes
                        (let* ((clean-code (cl-ppcre:regex-replace-all "(?m)^CL-USER>\\s*" code ""))
                               (wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" clean-code))
                               (result-json (cambeno.repl:eval-lisp-string wrapped-code))
@@ -61,29 +55,24 @@ RULES:
                          (push (format nil "Output of [~A]:~%~A" clean-code formatted-output) turn-results)
                          (format t "Code:~%~A~%" clean-code)
                          (format t "Result:~%~A~%~%" formatted-output)))
-                     
                      (log-timestamp (format nil "--- [Iteration ~A] Updating context ---" i))
                      (let ((results-string (format nil "~%SYSTEM FEEDBACK:~%~{~A~^~%~}~%REASONING: " (nreverse turn-results))))
                        (setf current-prompt (concatenate 'string 
                                                          current-prompt 
                                                          llm-response 
                                                          results-string))))
-                   
                    (progn
                      (log-timestamp (format nil "--- [Iteration ~A] No code blocks ---" i))
                      (setf current-prompt (concatenate 'string 
                                                        current-prompt 
                                                        llm-response 
                                                        (format nil "~%REASONING: ")))))
-
                (cond 
                  ((cl-ppcre:scan "(?i)STOP" llm-response)
                   (log-timestamp (format nil "--- [STOP] iteration ~A ---" i))
                   (return llm-response))
-                 
                  ((and (null code-blocks) (> i 1))
                   (log-timestamp (format nil "--- [FINISH] iteration ~A ---" i))
-                  (return llm-response))))))
-    
+                  (return llm-response)))))
     (log-timestamp "--- [END] Autonomous Reasoning Loop ---")
-    (log-timestamp "================================================================================")))
+    (log-timestamp "LOG END")))
