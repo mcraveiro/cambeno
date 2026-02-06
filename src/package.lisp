@@ -1,5 +1,5 @@
 (defpackage #:cambeno.repl
-  (:use #:cl)
+  (:use #:cl #:cl-json)
   (:export #:eval-lisp-string
            #:init-repl))
 
@@ -14,9 +14,10 @@
            #:*llama-server-url*))
 
 (defpackage #:cambeno.middleware
-  (:use #:cl #:cambeno.repl #:cambeno.llama)
+  (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre)
   (:export #:process-llm-output
-           #:eval-all-blocks))
+           #:eval-all-blocks
+           #:clean-llm-text))
 
 (defpackage #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
