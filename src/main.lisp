@@ -32,42 +32,45 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
                (log-timestamp (format nil "--- [Iteration ~A] LLM S-Expression ---" i))
                (format t "~S~%~%" data)
                
-               (let ((reasoning (getf data :reasoning))
-                     (code (getf data :code))
-                     (stop (getf data :stop)))
-                 
-                 (when reasoning 
-                   (format t "Reasoning: ~A~%" reasoning))
-                 
-                 (if code
-                     (progn
-                       (log-timestamp (format nil "--- [Iteration ~A] Action: Executing Code ---" i))
-                       (let* ((wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" code))
-                              (result-json (cambeno.repl:eval-lisp-string wrapped-code))
-                              (result-data (cl-json:decode-json-from-string result-json))
-                              (values (cdr (assoc :results result-data)))
-                              (stderr (cdr (assoc :stderr result-data)))
-                              (feedback (if (and stderr (not (string= stderr "")))
-                                            (format nil "(:error ~S)" stderr)
-                                            (format nil "(:values ~S)" values))))
-                         (format t "Result: ~A~%~%" feedback)
+               (if (not (listp data))
+                   (progn
+                     (log-timestamp "ERROR: LLM did not return a list. Ending.")
+                     (return (list :error "Non-list response" :raw data)))
+                   
+                   (let ((reasoning (getf data :reasoning))
+                         (code (getf data :code))
+                         (stop (getf data :stop)))
+                     
+                     (when reasoning 
+                       (format t "Reasoning: ~A~%" reasoning))
+                     
+                     (if code
+                         (progn
+                           (log-timestamp (format nil "--- [Iteration ~A] Action: Executing Code ---" i))
+                           (let* ((wrapped-code (format nil "(in-package #:cambeno.scratch)~%~A" code))
+                                  (result-json (cambeno.repl:eval-lisp-string wrapped-code))
+                                  (result-data (cl-json:decode-json-from-string result-json))
+                                  (values (cdr (assoc :results result-data)))
+                                  (stderr (cdr (assoc :stderr result-data)))
+                                  (feedback (if (and stderr (not (string= stderr "")))
+                                                (format nil "(:error ~S)" stderr)
+                                                (format nil "(:values ~S)" values))))
+                             (format t "Result: ~A~%~%" feedback)
+                             (setf current-prompt 
+                                   (concatenate 'string 
+                                                current-prompt 
+                                                llm-response 
+                                                (format nil "~%SYSTEM FEEDBACK: ~A~%NEXT STEP: " feedback)))))
                          (setf current-prompt 
                                (concatenate 'string 
                                             current-prompt 
                                             llm-response 
-                                            (format nil "~%SYSTEM FEEDBACK: ~A~%NEXT STEP: " feedback)))))
-                     (setf current-prompt 
-                           (concatenate 'string 
-                                        current-prompt 
-                                        llm-response 
-                                        (format nil "~%NEXT STEP: "))))
+                                            (format nil "~%NEXT STEP: "))))
 
-                 (when (or stop (getf data :error))
-                   (log-timestamp (format nil "--- [FINISH] Loop complete at iteration ~A ---" i))
-                   (return data)))))
-        (log-timestamp "--- [END] Pure Symbolic Loop ---")))
-    
-    (defun run-loop (initial-task &rest args)
-      "Alias for symbolic-run-loop."
-      (apply #'symbolic-run-loop initial-task args))
-    
+                     (when (or stop (getf data :error))
+                       (log-timestamp (format nil "--- [FINISH] Loop complete at iteration ~A ---" i))
+                       (return data))))))))
+
+(defun run-loop (initial-task &rest args)
+  "Alias for symbolic-run-loop."
+  (apply #'symbolic-run-loop initial-task args))

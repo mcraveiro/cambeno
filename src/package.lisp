@@ -15,7 +15,8 @@
   (:use #:cl)
   (:export #:query-llama
            #:test-performance
-           #:*llama-server-url*))
+           #:*llama-server-url*
+           #:*debug-llm*))
 
 (uiop:define-package #:cambeno.middleware
   (:use #:cl #:cambeno.repl #:cambeno.llama)
