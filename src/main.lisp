@@ -67,9 +67,14 @@ OUTPUT_FORMAT:
                                           (values (getf exec-result :results))
                                           (stdout (getf exec-result :stdout))
                                           (stderr (getf exec-result :stderr))
-                                          (feedback-val (if (and stderr (not (string= stderr "")))
-                                                            (progn (setf has-error t) (format nil "ERROR: ~A" stderr))
-                                                            (format nil "VALUES: ~S~@[~%STDOUT: ~A~]" values stdout))))
+                                          (warnings (getf exec-result :warnings))
+                                          (feedback-val (cond 
+                                                          ((and stderr (not (string= stderr "")))
+                                                           (progn (setf has-error t) (format nil "ERROR: ~A" stderr)))
+                                                          ((and warnings (not (string= warnings "")))
+                                                           (format nil "WARNINGS:~%~A~%VALUES: ~S~@[~%STDOUT: ~A~]" warnings values stdout))
+                                                          (t 
+                                                           (format nil "VALUES: ~S~@[~%STDOUT: ~A~]" values stdout)))))
                                      (format t "Code: ~S~%Result: ~A~%~%" code feedback-val)
                                      (push (format nil "Result of ~S: ~A" code feedback-val) turn-feedback)))))))
                      (let* ((status (if has-error :error :success))
