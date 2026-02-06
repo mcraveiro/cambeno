@@ -65,4 +65,9 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
                  (when (or stop (getf data :error))
                    (log-timestamp (format nil "--- [FINISH] Loop complete at iteration ~A ---" i))
                    (return data)))))
-    (log-timestamp "--- [END] Pure Symbolic Loop ---")))
+        (log-timestamp "--- [END] Pure Symbolic Loop ---")))
+    
+    (defun run-loop (initial-task &rest args)
+      "Alias for symbolic-run-loop."
+      (apply #'symbolic-run-loop initial-task args))
+    
