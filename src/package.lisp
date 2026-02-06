@@ -17,7 +17,8 @@
   (:use #:cl #:cambeno.repl #:cambeno.llama #:cl-ppcre)
   (:export #:process-llm-output
            #:eval-all-blocks
-           #:clean-llm-text))
+           #:clean-llm-text
+           #:md-to-lisp-tags))
 
 (defpackage #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)

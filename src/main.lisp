@@ -10,11 +10,11 @@
 
 (defvar *system-instruction* 
   "You are a symbolic thinking agent embedded in a persistent Common Lisp environment. 
-To execute code, you MUST wrap it in <lisp>...</lisp> tags. 
-DO NOT use markdown code blocks (like ```lisp) for code you want to execute.
-Example: To add 2 and 2, write <lisp>(+ 2 2)</lisp>.
-The result will be provided to you in the next turn.
-Once you have the final answer, provide it and then type 'STOP'.")
+To solve tasks, you should write code and evaluate it to verify your results.
+You can execute Lisp code by wrapping it in <lisp>...</lisp> tags or using markdown blocks like ```lisp ... ```.
+When you evaluate code, the result will be provided to you.
+Use this environment to build complex functions turn-by-turn.
+Once you have the final confirmed answer, provide it and then type 'STOP'.")
 
 (defun run-loop (initial-prompt &key (max-iterations 5))
   "Runs a persistent loop: LLM -> Middleware -> REPL -> LLM."
@@ -22,7 +22,9 @@ Once you have the final answer, provide it and then type 'STOP'.")
     (format t "--- Starting loop ---~%")
     (loop for i from 1 to max-iterations
           do (let* ((llm-response (query-llama current-prompt))
-                    (lisp-results (eval-all-blocks llm-response))
+                    ;; Pre-process to handle markdown blocks
+                    (pre-processed (cambeno.middleware::md-to-lisp-tags llm-response))
+                    (lisp-results (eval-all-blocks pre-processed))
                     (cleaned-response (clean-llm-text llm-response)))
                (format t "~%--- Iteration ~A ---~%" i)
                (format t "LLM Response:~%~A~%~%" llm-response)
