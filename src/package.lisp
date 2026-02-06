@@ -1,23 +1,23 @@
-(defpackage #:cambeno.scratch
+(uiop:define-package #:cambeno.scratch
   (:use #:cl))
 
-(defpackage #:cambeno.repl
+(uiop:define-package #:cambeno.repl
   (:use #:cl)
   (:export #:eval-lisp-string
            #:init-repl))
 
-(defpackage #:cambeno.utils
+(uiop:define-package #:cambeno.utils
   (:use #:cl)
   (:export #:list-functions
            #:inspect-symbol))
 
-(defpackage #:cambeno.llama
+(uiop:define-package #:cambeno.llama
   (:use #:cl)
   (:export #:query-llama
            #:test-performance
            #:*llama-server-url*))
 
-(defpackage #:cambeno.middleware
+(uiop:define-package #:cambeno.middleware
   (:use #:cl #:cambeno.repl #:cambeno.llama)
   (:import-from #:cl-ppcre #:scan #:regex-replace-all)
   (:import-from #:3bmd-grammar #:parse-doc)
@@ -26,7 +26,7 @@
            #:log-timestamp
            #:extract-code-from-ast))
 
-(defpackage #:cambeno
+(uiop:define-package #:cambeno
   (:use #:cl #:cambeno.repl #:cambeno.middleware #:cambeno.utils #:cambeno.llama)
   (:import-from #:cl-ppcre #:scan)
   (:export #:main #:run-loop))
