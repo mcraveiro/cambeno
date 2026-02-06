@@ -13,7 +13,7 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
       (read-sequence data stream)
       data)))
 
-(defun symbolic-run-loop (initial-task &key (max-iterations 10))
+(defun symbolic-run-loop (initial-task &key (max-iterations 10) (n-predict 1024))
   "Runs a pure symbolic loop using GBNF grammar to enforce S-exp responses."
   (let ((current-prompt (format nil "~A~%~%TASK: ~A~%NEXT STEP: " *symbolic-instruction* initial-task))
         (grammar (read-file-as-string "lisp.gbnf")))
@@ -23,8 +23,11 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
     
     (loop for i from 1 to max-iterations
           do (log-timestamp (format nil ">>> [Iteration ~A] Requesting S-Exp from LLM..." i))
-             (let* ((llm-response (query-llama current-prompt :grammar grammar))
-                    (data (handler-case (read-from-string llm-response) (error (e) (list :error e)))))
+             (let* ((llm-response (query-llama current-prompt :grammar grammar :n-predict n-predict))
+                    (data (handler-case 
+                              (read-from-string llm-response) 
+                            (error (e) 
+                              (list :error (format nil "Parse error: ~A" e))))))
                
                (log-timestamp (format nil "--- [Iteration ~A] LLM S-Expression ---" i))
                (format t "~S~%~%" data)
@@ -33,7 +36,8 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
                      (code (getf data :code))
                      (stop (getf data :stop)))
                  
-                 (when reasoning (format t "Reasoning: ~A~%" reasoning))
+                 (when reasoning 
+                   (format t "Reasoning: ~A~%" reasoning))
                  
                  (if code
                      (progn
@@ -47,16 +51,18 @@ EXAMPLE: (:reasoning \"Checking if 4 is prime\" :code (is-prime 4) :stop nil)")
                                             (format nil "(:error ~S)" stderr)
                                             (format nil "(:values ~S)" values))))
                          (format t "Result: ~A~%~%" feedback)
-                         (setf current-prompt (concatenate 'string 
-                                                           current-prompt 
-                                                           llm-response 
-                                                           (format nil "~%SYSTEM FEEDBACK: ~A~%NEXT STEP: " feedback)))))
-                     (setf current-prompt (concatenate 'string 
-                                                       current-prompt 
-                                                       llm-response 
-                                                       (format nil "~%NEXT STEP: "))))
+                         (setf current-prompt 
+                               (concatenate 'string 
+                                            current-prompt 
+                                            llm-response 
+                                            (format nil "~%SYSTEM FEEDBACK: ~A~%NEXT STEP: " feedback)))))
+                     (setf current-prompt 
+                           (concatenate 'string 
+                                        current-prompt 
+                                        llm-response 
+                                        (format nil "~%NEXT STEP: "))))
 
                  (when (or stop (getf data :error))
                    (log-timestamp (format nil "--- [FINISH] Loop complete at iteration ~A ---" i))
-                   (return data))))))
+                   (return data)))))
     (log-timestamp "--- [END] Pure Symbolic Loop ---")))
