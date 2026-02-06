@@ -19,7 +19,8 @@ You may provide multiple plists in one turn if multiple steps are needed.")
         (grammar (read-file-as-string "lisp.gbnf")))
     
     (log-timestamp "--- [START] Multi-Step Symbolic Loop ---")
-    (format t "Task: ~A~%~%" initial-task)
+    (format t "System Instruction:~%~A~%~%" *symbolic-instruction*)
+    (format t "Initial Task: ~A~%~%" initial-task)
     
     (loop for i from 1 to max-iterations
           do (log-timestamp (format nil ">>> [Iteration ~A] Requesting LLM Response..." i))
