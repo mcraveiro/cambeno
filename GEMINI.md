@@ -49,5 +49,7 @@ The LLM can use `cambeno.utils` functions to inspect the environment:
 - [x] Basic REPL with output capture
 - [x] Middleware for tag extraction and result injection
 - [x] Self-inspection utilities
+- [x] llama.cpp HTTP API integration
+- [x] Persistent loop implementation (`run-loop`)
 - [ ] Advanced Sandboxing
 - [ ] Streaming Middleware implementation

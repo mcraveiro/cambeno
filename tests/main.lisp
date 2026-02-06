@@ -16,5 +16,11 @@
   (let ((result (process-llm-output "Test: <lisp>(+ 10 20)</lisp>")))
     (is (search "VALUES: (30)" result))))
 
+(test test-query-llama
+  (cl-mock:with-mocks ()
+    (cl-mock:answer drakma:http-request
+      (values (flexi-streams:string-to-octets "{\"content\": \"Mocked response\"}") 200 nil nil nil nil nil))
+    (is (string= "Mocked response" (query-llama "Test prompt")))))
+
 (defun run-tests ()
   (run! 'cambeno-suite))

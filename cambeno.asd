@@ -2,12 +2,13 @@
   :version "0.1.0"
   :author "Marco"
   :license "MIT"
-  :depends-on ("uiop" "cl-json")
+  :depends-on ("uiop" "cl-json" "drakma" "flexi-streams" "str" "cl-ppcre")
   :components ((:module "src"
                 :components
                 ((:file "package")
                  (:file "repl")
                  (:file "utils")
+                 (:file "llama")
                  (:file "middleware")
                  (:file "main"))))
   :description "Implementation of 'From Tool Calling to Symbolic Thinking' architecture."
@@ -16,7 +17,7 @@
 (defsystem "cambeno/tests"
   :author "Marco"
   :license "MIT"
-  :depends-on ("cambeno" "fiveam")
+  :depends-on ("cambeno" "fiveam" "cl-mock")
   :components ((:module "tests"
                 :components
                 ((:file "package")
