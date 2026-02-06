@@ -40,6 +40,26 @@ The project aims to provide LLMs with a persistent, stateful Lisp environment wh
    (asdf:load-system :cambeno)
    ```
 
+## Development Environment (Emacs)
+
+For the best development experience, it is recommended to use Emacs with either **SLIME** or **Sly**.
+
+1. Install SLIME or Sly via the Emacs package manager (`M-x package-install`).
+2. Configure your Lisp implementation in your Emacs init file:
+   ```elisp
+   (setq inferior-lisp-program "sbcl")
+   ```
+3. To load Cambeno during development:
+   - Symlink the `cambeno` directory into your Quicklisp local projects folder:
+     ```bash
+     ln -s /path/to/cambeno ~/quicklisp/local-projects/
+     ```
+   - In Emacs, run `M-x slime` (or `M-x sly`).
+   - Load the system:
+     ```lisp
+     (ql:quickload :cambeno)
+     ```
+
 ## Usage
 
 ### LLM Loop
