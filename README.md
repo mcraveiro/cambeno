@@ -52,7 +52,7 @@ For the best development experience, it is recommended to use Emacs with either 
 3. To load Cambeno during development:
    - Symlink the `cambeno` directory into your Quicklisp local projects folder:
      ```bash
-     ln -s /path/to/cambeno ~/quicklisp/local-projects/
+     ln -s /path/to/cambeno ~/.quicklisp/local-projects/
      ```
    - In Emacs, run `M-x slime` (or `M-x sly`).
    - Load the system:
